@@ -1,21 +1,27 @@
 # Cursor Chat Export
 
-This project provides a command-line interface (CLI) tool to discover and export AI chat data from [Cursor](https://cursor.sh). The tool is implemented in `chat.py` and leverages utility classes for querying the database, formatting the chat data, and saving it to files.
+This project provides CLI tools to discover and export AI chat data from [Cursor](https://cursor.sh).
 
-Cursor's chat history is stored in `sqlite3` databases using `state.vscdb` files. One such file is for one workspace. All the chats for a workspace are saved here in so-called *tabs*, one tab means a single chat.
+> **This fork** adds `export_new.py` to support the **current Cursor storage format** (globalStorage + `cursorDiskKV`). The original `chat.py` is retained for older Cursor versions.
+
+## Storage Format Comparison
+
+Cursor has changed its chat storage layout over time. Choose the right tool based on your Cursor version:
+
+| | Legacy Format (`chat.py`) | New Format (`export_new.py`) |
+|---|---|---|
+| **Cursor version** | Older versions | Current versions (2025+) |
+| **Metadata location** | Per-workspace `state.vscdb` → `ItemTable` → key `workbench.panel.aichat.view.aichat.chatdata` | Per-workspace `state.vscdb` → `ItemTable` → key `composer.composerData` |
+| **Content location** | Same DB as metadata | Global `state.vscdb` → `cursorDiskKV` table → keys `bubbleId:<composerId>:<messageId>` |
+| **Global DB path (macOS)** | N/A | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` |
 
 Also see [this](https://forum.cursor.com/t/guide-5-steps-exporting-chats-prompts-from-cursor/2825) forum post on this topic.
-
-## Features
-
-- **Discover Chats**: Discover all chats from all workspaces and print a few lines of dialogue so one can identify which is the workspace (or chat) one is searching for. It's also possible to filter by text.
-- **Export Chats**: Export chats for the most recent (or a specific) workspace to Markdown files or print them to the command line.
 
 ## Installation
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/somogyijanos/cursor-chat-export.git
+    git clone https://github.com/jzhou-tech/cursor-chat-export.git
     cd cursor-chat-export
     ```
 
@@ -24,13 +30,34 @@ Also see [this](https://forum.cursor.com/t/guide-5-steps-exporting-chats-prompts
     pip install -r requirements.txt
     ```
 
-## Usage
+## Usage — New Format (`export_new.py`)
 
-First, find where the `state.vscdb` files are located on your computer. Confirm that corresponding to your system, the right path is set in the [config.yml](./config.yml) file. Update it if not set correctly.
+For **current Cursor versions**. No config file needed — paths are auto-detected.
 
-Both the `discover` and `export` commands will work with this path by default, but you can also provide a custom path any time.
+```sh
+# List all conversations
+python export_new.py list
+
+# Search conversations by keyword
+python export_new.py list --search "keyword"
+
+# Export all conversations to Markdown
+python export_new.py export --output-dir ./out
+
+# Export a specific conversation by ID
+python export_new.py export --id <composerId>
+
+# Export the latest 5 conversations
+python export_new.py export --latest 5
+```
 
 ---
+
+## Usage — Legacy Format (`chat.py`)
+
+For **older Cursor versions**. Requires [config.yml](./config.yml) to set your workspace storage path.
+
+Both the `discover` and `export` commands will work with the configured path by default, but you can also provide a custom path any time.
 
 ### Discover Chats
 ```sh
@@ -46,8 +73,6 @@ Both the `discover` and `export` commands will work with this path by default, b
 # Discover all chats from all workspaces at a custom path
 ./chat.py discover "/path/to/workspaces"
 ```
-
----
 
 ### Export Chats
 See `./chat.py export --help` for general help. Examples:
